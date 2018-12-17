@@ -1,0 +1,94 @@
+#!/usr/bin/python3
+import argparse
+import sys
+
+# parser.add_argument('filename', help='the file to read')
+# parser.add_argument('--limit', '-l', type=int, help='the number of lines to read')
+
+# build the parser
+parser = argparse.ArgumentParser(description='stop things from alarming')
+parser.add_argument('object', help='the object you want to put in downtime (host or service)')
+parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
+parser.add_argument('--hosts', '-H', type=str, help='host or hosts to put in downtime')
+parser.add_argument('--services', '-S', type=str, help='service names to put in downtime')
+parser.add_argument('--user', '-U', type=str, help='your username')
+parser.add_argument('--duration', '-D', help='length of time you want the host or service to be in downtime')
+parser.add_argument('--comment', '-C', help='add a comment so others know what you are working on')
+
+args = parser.parse_args()
+print(args)
+
+def host_downtime():
+    # are there hosts
+    if args.hosts:
+        print(args.hosts.split(','))
+    else:
+        print('No hosts were provided')
+
+
+def service_downtime():
+    # are there services
+    if args.services and args.hosts:
+        print(args.services.split(','))
+        print(args.hosts.split(','))
+    else:
+        print('Service downtime requires a service name and a host name.')
+    pass
+
+
+if args.object == 'hosts':
+    host_downtime()
+
+if args.object == 'services':
+    service_downtime()
+
+
+# action
+#   host downtime
+#       host(s) or hostgroup name
+#       username
+#       optional args
+#           start/end time (leave empty on default)
+#           duration (2 hours default - compare to start/end if both are present to make sure they're ==)
+#           comment (default = i'm bad and didn't leave a comment)
+
+#   service downtime
+#       service(s)
+#       host(s) or hostgroup
+#       username
+#       optional args
+#           start/end time (leave empty on default)
+#           duration (2 hours default - compare to start/end if both are present to make sure they're ==)
+#           comment (default = i'm bad and didn't leave a comment)
+
+#   log data
+#       time range
+#           last X min/hours/days/months
+#           start/end time
+#       service(s)
+#       host(s)
+
+#   alert history
+#       time range
+#           last X min/hours/days/months
+#           start/end time
+#       service(s)
+#       host(s)
+
+
+
+
+
+# with open(args.filename) as f:
+#     lines = f.readlines()
+#     lines.reverse()
+#
+#     if args.limit:
+#         lines = lines[:args.limit]
+#
+#     for line in lines:
+#         print(line.strip()[::-1])
+
+# parse the args
+
+# read the file, reverse the contents and print
