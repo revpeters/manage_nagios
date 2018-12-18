@@ -1,22 +1,35 @@
 #!/usr/bin/python3
 import argparse
+import time
 import sys
+import os
+import glob
 
-# parser.add_argument('filename', help='the file to read')
-# parser.add_argument('--limit', '-l', type=int, help='the number of lines to read')
+cfg_path = '/local/nagios/etc/objects/'
+host_group_path = '' # cfg_path + 'hostgroups/'
 
 # build the parser
 parser = argparse.ArgumentParser(description='stop things from alarming')
 parser.add_argument('object', help='the object you want to put in downtime (host or service)')
 parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
-parser.add_argument('--hosts', '-H', type=str, help='host or hosts to put in downtime')
+parser.add_argument('--hosts', '-H', type=str, help='host(s) or host group to put in downtime', required=True)
 parser.add_argument('--services', '-S', type=str, help='service names to put in downtime')
-parser.add_argument('--user', '-U', type=str, help='your username')
-parser.add_argument('--duration', '-D', help='length of time you want the host or service to be in downtime')
-parser.add_argument('--comment', '-C', help='add a comment so others know what you are working on')
+parser.add_argument('--user', '-U', type=str, help='your username', required=True)
+# parser.add_argument('--start', help='The time you would like downtime to start')
+# parser.add_argument('--end', help='the time you would like downtime to end')
+parser.add_argument('--duration', '-D', type=int, default=7200, help='length of time you want the host or service to be in downtime')
+parser.add_argument('--comment', '-C', help='add a comment so others know what you are working on', required=True)
 
 args = parser.parse_args()
-print(args)
+
+hostgroups = []
+
+for files in glob.glob(host_group_path + '*.cfg'):
+    with open(files) as f:
+        for line in f:
+            if 'hostgroup_name' in line:
+                hostgroups.append(line.strip().split()[1])
+
 
 def host_downtime():
     # are there hosts
@@ -24,15 +37,39 @@ def host_downtime():
         print(args.hosts.split(','))
     else:
         print('No hosts were provided')
+        sys.exit()
+
+    if args.duration:
+        start_time = int(time.mktime(time.localtime()))
+        end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
+
+    # check is hosts are host groups
+    for host in args.hosts.split(','):
+        if host in hostgroups:
+            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+        else:
+            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
 
 
 def service_downtime():
-    # are there services
-    if args.services and args.hosts:
+    # are there services and hosts
+    if args.services:
         print(args.services.split(','))
         print(args.hosts.split(','))
     else:
-        print('Service downtime requires a service name and a host name.')
+        print(os.path.basename(sys.argv[0]) + ': error: the following arguments are required: --services/-S')
+        sys.exit()
+
+
+def check_for_host():
+    # objects/hosts/*
+    pass
+
+
+def check_for_service():
+    # objects/services/*
     pass
 
 
