@@ -5,17 +5,17 @@ import glob
 
 # can I grab this from nagios.cfg?
 cfg_path = '/local/nagios/etc/objects/'
-host_group_path = '' # cfg_path + 'hostgroups/'
+host_group_path = ''  # cfg_path + 'hostgroups/'
 
 # build the parser
 parser = argparse.ArgumentParser(description='stop things from alarming')
 parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
-parser.add_argument('--hosts', '-H', type=str, help='host(s) or host group to put in downtime', required=True)
-parser.add_argument('--services', '-S', type=str, help='service names to put in downtime')
+parser.add_argument('--hosts', '-H', help='host(s) or host group to put in downtime', required=True)
+parser.add_argument('--services', '-S', help='service names to put in downtime')
 parser.add_argument('--user', '-U', type=str, help='your username', required=True)
 # parser.add_argument('--start', help='The time you would like downtime to start')
 # parser.add_argument('--end', help='the time you would like downtime to end')
-parser.add_argument('--duration', '-D', type=int, default=7200, help='length of time you want the host or service to be in downtime')
+parser.add_argument('--duration', '-D', type=int, default=7200, help='duration of time to be in downtime')
 parser.add_argument('--comment', '-C', help='add a comment so others know what you are working on', required=True)
 
 args = parser.parse_args()
@@ -34,7 +34,7 @@ for files in glob.glob(host_group_path + '*.cfg'):
 def host_downtime():
     if args.duration:
         start_time = int(time.mktime(time.localtime()))
-        end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
+        end_time = int(time.mktime(time.localtime(args.duration)) + start_time)
 
     for host in args.hosts.split(','):
         if host in h_groups:
@@ -46,7 +46,7 @@ def host_downtime():
 def service_downtime():
     if args.duration:
         start_time = int(time.mktime(time.localtime()))
-        end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
+        end_time = int(time.mktime(time.localtime(args.duration)) + start_time)
 
     for host in args.hosts.split(','):
         if host in h_groups:
