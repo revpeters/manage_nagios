@@ -5,9 +5,18 @@ import sys
 import os
 import glob
 
+# TODO
+# do I need object with host and service flags?
+# if host flag is present and service flag is not
+#   do host downtime
+# if host flag is preset and service flag is present
+#   do service downtime
+# if host flag is not present and service flag is present
+#   exit with error that host flag is required
+
 # can I grab this from nagios.cfg?
 cfg_path = '/local/nagios/etc/objects/'
-host_group_path = '' # cfg_path + 'h_groups/'
+host_group_path = '' # cfg_path + 'hostgroups/'
 
 # build the parser
 parser = argparse.ArgumentParser(description='stop things from alarming')
@@ -22,14 +31,11 @@ parser.add_argument('--duration', '-D', type=int, default=7200, help='length of 
 parser.add_argument('--comment', '-C', help='add a comment so others know what you are working on', required=True)
 
 args = parser.parse_args()
-
-# list of host groups that exist
-# will use this to verify host group names when they're passed in
 h_groups = []
 hg_members = []
-lines = []
 
-for files in glob.glob('*.cfg'):
+#
+for files in glob.glob(host_group_path + '*.cfg'):
     with open(files) as f:
         for line in f:
             if 'hostgroup_name' in line:
@@ -51,14 +57,14 @@ def host_downtime():
         start_time = int(time.mktime(time.localtime()))
         end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
 
-    # check if hosts are host groups
+
     for host in args.hosts.split(','):
+        # check if host is a hostgroups else assume host
         if host in h_groups:
-            for member in hg_members[h_groups.index(host)].split(','):
-                print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_HOST_DOWNTIME;{member};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-                print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{member};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-                # put_in_downtime(84, host, start_time, end_time, user, comments)
-                # put_in_downtime(85, host, start_time, end_time, user, comments)
+            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+            # put_in_downtime(84, host, start_time, end_time, user, comments)
+            # put_in_downtime(85, host, start_time, end_time, user, comments)
         else:
             # put_in_downtime(55, host, start_time, end_time, user, comments)
             # put_in_downtime(86, host, start_time, end_time, user, comments)
@@ -80,18 +86,19 @@ def service_downtime():
         start_time = int(time.mktime(time.localtime()))
         end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
 
-        # check if hosts are host groups
     for host in args.hosts.split(','):
+        # check if host is a hostgroup else assume host
         if host in h_groups:
+            for member in hg_members[h_groups.index(host)].split(','):
+                for service in args.services.split(','):
+                    print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{member};{service};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
             # put_in_downtime(84, host, start_time, end_time, user, comments)
             # put_in_downtime(85, host, start_time, end_time, user, comments)
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
         else:
             # put_in_downtime(55, host, start_time, end_time, user, comments)
             # put_in_downtime(86, host, start_time, end_time, user, comments)
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+            for service in args.services.split(','):
+                print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{member};{service};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
 
 
 def check_for_host():
@@ -116,63 +123,14 @@ def put_in_downtime():
     # CMD_SCHEDULE_HOSTGROUP_SVC_DOWNTIME             85
 
     # CMD_SCHEDULE_SVC_DOWNTIME                       56
-
-
     pass
 
-if args.object == 'hosts':
+
+if args.object == 'host' or args.object == 'hosts':
     host_downtime()
-
-if args.object == 'services':
+elif args.object == 'service' or args.object == 'services':
     service_downtime()
-
-
-# action
-#   host downtime
-#       host(s) or hostgroup name
-#       username
-#       optional args
-#           start/end time (leave empty on default)
-#           duration (2 hours default - compare to start/end if both are present to make sure they're ==)
-#           comment (default = i'm bad and didn't leave a comment)
-
-#   service downtime
-#       service(s)
-#       host(s) or hostgroup
-#       username
-#       optional args
-#           start/end time (leave empty on default)
-#           duration (2 hours default - compare to start/end if both are present to make sure they're ==)
-#           comment (default = i'm bad and didn't leave a comment)
-
-#   log data
-#       time range
-#           last X min/hours/days/months
-#           start/end time
-#       service(s)
-#       host(s)
-
-#   alert history
-#       time range
-#           last X min/hours/days/months
-#           start/end time
-#       service(s)
-#       host(s)
-
-
-
-
-
-# with open(args.filename) as f:
-#     lines = f.readlines()
-#     lines.reverse()
-#
-#     if args.limit:
-#         lines = lines[:args.limit]
-#
-#     for line in lines:
-#         print(line.strip()[::-1])
-
-# parse the args
-
-# read the file, reverse the contents and print
+else:
+    print(f'First argument should be host or service.')
+    print(f'{os.path.basename(sys.argv[0])} {args.object} is not a valid option.')
+    parser.print_help()
