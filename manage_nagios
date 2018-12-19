@@ -1,18 +1,7 @@
 #!/usr/bin/python3
 import argparse
 import time
-import sys
-import os
 import glob
-
-# TODO
-# do I need object with host and service flags?
-# if host flag is present and service flag is not
-#   do host downtime
-# if host flag is preset and service flag is present
-#   do service downtime
-# if host flag is not present and service flag is present
-#   exit with error that host flag is required
 
 # can I grab this from nagios.cfg?
 cfg_path = '/local/nagios/etc/objects/'
@@ -20,7 +9,6 @@ host_group_path = '' # cfg_path + 'hostgroups/'
 
 # build the parser
 parser = argparse.ArgumentParser(description='stop things from alarming')
-parser.add_argument('object', help='the object you want to put in downtime (host or service)')
 parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
 parser.add_argument('--hosts', '-H', type=str, help='host(s) or host group to put in downtime', required=True)
 parser.add_argument('--services', '-S', type=str, help='service names to put in downtime')
@@ -34,7 +22,6 @@ args = parser.parse_args()
 h_groups = []
 hg_members = []
 
-#
 for files in glob.glob(host_group_path + '*.cfg'):
     with open(files) as f:
         for line in f:
@@ -45,61 +32,30 @@ for files in glob.glob(host_group_path + '*.cfg'):
 
 
 def host_downtime():
-    # are there hosts
-    if args.hosts:
-        print(args.hosts.split(','))
-    else:
-        print('No hosts were provided')
-        sys.exit()
-
-    # if duration star time is now, end time is start + duration (in seconds)
     if args.duration:
         start_time = int(time.mktime(time.localtime()))
         end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
 
-
     for host in args.hosts.split(','):
-        # check if host is a hostgroups else assume host
         if host in h_groups:
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOSTGROUP_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-            # put_in_downtime(84, host, start_time, end_time, user, comments)
-            # put_in_downtime(85, host, start_time, end_time, user, comments)
+            put_in_downtime(2, host, start_time, end_time, args.user, args.comment)
         else:
-            # put_in_downtime(55, host, start_time, end_time, user, comments)
-            # put_in_downtime(86, host, start_time, end_time, user, comments)
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-            print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{host};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
+            put_in_downtime(1, host, start_time, end_time, args.user, args.comment)
 
 
 def service_downtime():
-    # are there services and hosts
-    if args.services:
-        print(args.services.split(','))
-        print(args.hosts.split(','))
-    else:
-        print(os.path.basename(sys.argv[0]) + ': error: the following arguments are required: --services/-S')
-        sys.exit()
-
-        # if duration star time is now, end time is start + duration (in seconds)
     if args.duration:
         start_time = int(time.mktime(time.localtime()))
         end_time = int(time.mktime(time.localtime(args.duration)) + time.mktime(time.localtime()))
 
     for host in args.hosts.split(','):
-        # check if host is a hostgroup else assume host
         if host in h_groups:
             for member in hg_members[h_groups.index(host)].split(','):
                 for service in args.services.split(','):
-                    print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{member};{service};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-            # put_in_downtime(84, host, start_time, end_time, user, comments)
-            # put_in_downtime(85, host, start_time, end_time, user, comments)
+                    put_in_downtime(3, member, start_time, end_time, args.user, args.comment, service)
         else:
-            # put_in_downtime(55, host, start_time, end_time, user, comments)
-            # put_in_downtime(86, host, start_time, end_time, user, comments)
             for service in args.services.split(','):
-                print(f'[{int(time.mktime(time.localtime()))}] SCHEDULE_HOST_SVC_DOWNTIME;{member};{service};{start_time};{end_time};1;0;0;{args.user};{args.comment}')
-
+                put_in_downtime(3, host, start_time, end_time, args.user, args.comment, service)
 
 def check_for_host():
     # objects/hosts/*
@@ -110,27 +66,25 @@ def check_for_service():
     # objects/services/*
     pass
 
-def put_in_downtime():
-    # pass in args
-    # open nagios.cmd for write
-    # write lines
-    # close nagios.cmd
 
-    # CMD_SCHEDULE_HOST_DOWNTIME                      55
-    # CMD_SCHEDULE_HOST_SVC_DOWNTIME                  86
+def put_in_downtime(cmd, host, start_time, end_time, user, comment, *service):
+    now = int(time.mktime(time.localtime()))
+    downtime = {
+        1: ['SCHEDULE_HOST_DOWNTIME', 'SCHEDULE_HOST_SVC_DOWNTIME'],
+        2: ['SCHEDULE_HOSTGROUP_HOST_DOWNTIME','SCHEDULE_HOSTGROUP_SVC_DOWNTIME'],
+        3: ['SCHEDULE_SVC_DOWNTIME']
+    }
 
-    # CMD_SCHEDULE_HOSTGROUP_HOST_DOWNTIME            84
-    # CMD_SCHEDULE_HOSTGROUP_SVC_DOWNTIME             85
+    if cmd == 3:
+        ext_cmd = f'[{now}] {downtime[cmd]};{host};{service[0]};{start_time};{end_time};1;0;0;{user};{comment}'
+        print(ext_cmd)
+    else:
+        for i in range(len(downtime[cmd])):
+            ext_cmd = f'[{now}] {downtime[cmd][i]};{host};{start_time};{end_time};1;0;0;{user};{comment}'
+            print(ext_cmd)
 
-    # CMD_SCHEDULE_SVC_DOWNTIME                       56
-    pass
 
-
-if args.object == 'host' or args.object == 'hosts':
-    host_downtime()
-elif args.object == 'service' or args.object == 'services':
+if args.services:
     service_downtime()
 else:
-    print(f'First argument should be host or service.')
-    print(f'{os.path.basename(sys.argv[0])} {args.object} is not a valid option.')
-    parser.print_help()
+    host_downtime()
