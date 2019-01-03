@@ -3,39 +3,43 @@ import argparse
 import time
 import glob
 
+# TODO
+# read in comments and services with whitespace chars without the need to be wrapped in ticks
+# print output to user when you've completed
+# print a list of things you attempted to put into downtime
+# print link to downtime page https://{hostname}/nagios/cgi-bin/extinfo.cgi?type=6
+# check user running the script and use that as Author if not root or cva
+# check if values user is entering exist and return relevant info
+
 # can I grab this from nagios.cfg?
+cmd_file = '/local/nagios/var/rw/nagios.cmd'
 cfg_path = '/local/nagios/etc/objects/'
-host_group_path = ''  # cfg_path + 'hostgroups/'
+host_group_path = cfg_path + 'hostgroups/'
 
 # build the parser
-parser = argparse.ArgumentParser(description='stop things from alarming')
+parser = argparse.ArgumentParser(description='Script built to help save time when putting more than one host or service in to downtime')
 parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
-parser.add_argument('--hosts', '-H', help='host(s) or host group to put in downtime', required=True)
-parser.add_argument('--services', '-S', help='service names to put in downtime')
-parser.add_argument('--user', '-U', type=str, help='your username', required=True)
-# parser.add_argument('--start', help='The time you would like downtime to start')
-# parser.add_argument('--end', help='the time you would like downtime to end')
-parser.add_argument('--duration', '-D', type=int, default=7200, help='duration of time to be in downtime')
-parser.add_argument('--comment', '-C', help='add a comment so others know what you are working on', required=True)
+parser.add_argument('--hosts', '-H', help='Host(s) or hostgroup(s) comma separated', required=True)
+parser.add_argument('--services', '-S', help='Service(s) comma separated')
+parser.add_argument('--user', '-U', type=str, help='Your Nagios Username', required=True)
+parser.add_argument('--comment', '-C', help='Add a comment or ticket number so the team will know what is going on', required=True)
 
 args = parser.parse_args()
 h_groups = []
 hg_members = []
+start_time = int(time.mktime(time.localtime()))
+end_time = int(time.mktime(time.localtime(7200)) + start_time)
 
 for files in glob.glob(host_group_path + '*.cfg'):
-    with open(files) as f:
-        for line in f:
+    with open(files) as cfg:
+        for line in cfg:
             if 'hostgroup_name' in line:
                 h_groups.append(line.strip().split()[1])
-                f.readline()
-                hg_members.append(f.readline().strip().split()[1])
+                cfg.readline()
+                hg_members.append(cfg.readline().strip().split()[1])
 
 
 def host_downtime():
-    if args.duration:
-        start_time = int(time.mktime(time.localtime()))
-        end_time = int(time.mktime(time.localtime(args.duration)) + start_time)
-
     for host in args.hosts.split(','):
         if host in h_groups:
             put_in_downtime(2, host, start_time, end_time, args.user, args.comment)
@@ -44,10 +48,6 @@ def host_downtime():
 
 
 def service_downtime():
-    if args.duration:
-        start_time = int(time.mktime(time.localtime()))
-        end_time = int(time.mktime(time.localtime(args.duration)) + start_time)
-
     for host in args.hosts.split(','):
         if host in h_groups:
             for member in hg_members[h_groups.index(host)].split(','):
@@ -75,13 +75,17 @@ def put_in_downtime(cmd, host, start_time, end_time, user, comment, *service):
         3: ['SCHEDULE_SVC_DOWNTIME']
     }
 
+    #
     if cmd == 3:
-        ext_cmd = f'[{now}] {downtime[cmd]};{host};{service[0]};{start_time};{end_time};1;0;0;{user};{comment}'
-        print(ext_cmd)
+        for i in range(len(service)):
+            ext_cmd = f'[{now}] {downtime[cmd][0]};{host};{service[i]};{start_time};{end_time};1;0;0;{user};{comment}\n'
+            with open(cmd_file, 'w') as f:
+                f.write(ext_cmd)
     else:
         for i in range(len(downtime[cmd])):
-            ext_cmd = f'[{now}] {downtime[cmd][i]};{host};{start_time};{end_time};1;0;0;{user};{comment}'
-            print(ext_cmd)
+            ext_cmd = f'[{now}] {downtime[cmd][i]};{host};{start_time};{end_time};1;0;0;{user};{comment}\n'
+            with open(cmd_file, 'w') as f:
+                f.write(ext_cmd)
 
 
 if args.services:
