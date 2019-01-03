@@ -3,6 +3,11 @@ import argparse
 import time
 import glob
 
+# download using this cli command in your home directory
+# curl -L https://raw.githubusercontent.com/revpeters/manage_nagios/master/manage_nagios > manage_nagios
+# update /usr/bin/python3 to match your python 3 path
+# i.e. /usr/bin/python3.6 on sjc-nagios
+
 # TODO
 # error check common user typos
 # read in comments and services with whitespace chars without the need to be wrapped in ticks
