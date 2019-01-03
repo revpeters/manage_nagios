@@ -4,6 +4,7 @@ import time
 import glob
 
 # TODO
+# error check common user typos
 # read in comments and services with whitespace chars without the need to be wrapped in ticks
 # print output to user when you've completed
 # print a list of things you attempted to put into downtime
