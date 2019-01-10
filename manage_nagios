@@ -1,7 +1,8 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.6
 import argparse
 import time
 import glob
+
 
 # download using this cli command in your home directory
 # curl -L https://raw.githubusercontent.com/revpeters/manage_nagios/master/manage_nagios > manage_nagios
