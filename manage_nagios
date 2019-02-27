@@ -26,7 +26,7 @@ host_group_path = cfg_path + 'hostgroups/'
 parser = argparse.ArgumentParser(description='Script built to help save time when putting more than one host or service in to downtime')
 parser.add_argument('--version', '-v', action='version', version='%(prog)s 1.0')
 parser.add_argument('--hosts', '-H', help='Host(s) or hostgroup(s) comma separated', required=True)
-parser.add_argument('--services', '-S', help='Service(s) comma separated')
+parser.add_argument('--services', '-S', help='Service(s) comma separated. If prod or non-prod, notifications will be turned on or off.')
 parser.add_argument('--user', '-U', type=str, help='Your Nagios Username', required=True)
 parser.add_argument('--comment', '-C', help='Add a comment or ticket number so the team will know what is going on', required=True)
 
@@ -99,8 +99,8 @@ def set_status(status):
     statuses = {
         1: ['DISABLE_HOSTGROUP_HOST_NOTIFICATIONS', 'DISABLE_HOSTGROUP_SVC_NOTIFICATIONS'],
         2: ['ENABLE_HOSTGROUP_HOST_NOTIFICATIONS', 'ENABLE_HOSTGROUP_SVC_NOTIFICATIONS'],
-        3: ['DISABLE_HOST_NOTIFICATIONS', 'DISABLE_SVC_NOTIFICATIONS'],
-        4: ['ENABLE_HOST_NOTIFICATIONS', 'ENABLE_HOST_NOTIFICATIONS']
+        3: ['DISABLE_HOST_NOTIFICATIONS', 'DISABLE_HOST_SVC_NOTIFICATIONS'],
+        4: ['ENABLE_HOST_NOTIFICATIONS', 'ENABLE_HOST_SVC_NOTIFICATIONS']
     }
 
     if status == 'prod':
