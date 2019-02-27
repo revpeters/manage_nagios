@@ -1,8 +1,7 @@
-#!/usr/bin/python3.6
+#!/usr/bin/python3
 import argparse
 import time
 import glob
-
 
 # download using this cli command in your home directory
 # curl -L https://raw.githubusercontent.com/revpeters/manage_nagios/master/manage_nagios > manage_nagios
@@ -95,7 +94,45 @@ def put_in_downtime(cmd, host, start_time, end_time, user, comment, *service):
                 f.write(ext_cmd)
 
 
+def set_status(status):
+    now = int(time.mktime(time.localtime()))
+    statuses = {
+        1: ['DISABLE_HOSTGROUP_HOST_NOTIFICATIONS', 'DISABLE_HOSTGROUP_SVC_NOTIFICATIONS'],
+        2: ['ENABLE_HOSTGROUP_HOST_NOTIFICATIONS', 'ENABLE_HOSTGROUP_SVC_NOTIFICATIONS'],
+        3: ['DISABLE_HOST_NOTIFICATIONS', 'DISABLE_SVC_NOTIFICATIONS'],
+        4: ['ENABLE_HOST_NOTIFICATIONS', 'ENABLE_HOST_NOTIFICATIONS']
+    }
+
+    if status == 'prod':
+        for host in args.hosts.split(','):
+            if host in h_groups:
+                for i in range(2):
+                    ext_cmd = f'[{now}] {statuses[2][i]}; {host}\n'
+                    with open(cmd_file, 'w') as f:
+                        f.write(ext_cmd)
+            else:
+                for i in range(2):
+                    ext_cmd = f'[{now}] {statuses[4][i]}; {host}\n'
+                    with open(cmd_file, 'w') as f:
+                        f.write(ext_cmd)
+    else:
+        for host in args.hosts.split(','):
+            if host in h_groups:
+                for i in range(2):
+                    ext_cmd = f'[{now}] {statuses[1][i]}; {host}\n'
+                    with open(cmd_file, 'w') as f:
+                        f.write(ext_cmd)
+            else:
+                for i in range(2):
+                    ext_cmd = f'[{now}] {statuses[3][i]}; {host}\n'
+                    with open(cmd_file, 'w') as f:
+                        f.write(ext_cmd)
+
+
 if args.services:
-    service_downtime()
+    if args.services == 'non-prod' or 'prod':
+        set_status(args.services)
+    else:
+        service_downtime()
 else:
     host_downtime()
